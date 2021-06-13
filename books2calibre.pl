@@ -40,7 +40,7 @@ use vars qw/*name *dir *prune/;
 sub wanted;
 
 # Traverse desired filesystems
-File::Find::find({wanted => \&wanted}, '/Volumes/Frankenstein/Users/tony/Downloads/');
+File::Find::find({wanted => \&wanted}, bsd_glob("~/Downloads", GLOB_TILDE));
 
 my %candidates;
 sub wanted {
@@ -268,12 +268,15 @@ sub emit
     if (exists $plash{'--authors'})
     {
 	$logger->info("Authors: ", $plash{'--authors'});
+	print("echo Authors: ", shell_quote($plash{'--authors'}), "\n");
     }
     if (exists $plash{'--title'})
     {
 	$logger->info("Title: ", $plash{'--title'});
+	print("echo Title: ", shell_quote($plash{'--title'}), "\n");	
     }
     $logger->info("Filename: ", $plash{'file'});
+    print("echo Filename: ", shell_quote($plash{'file'}), "\n");
     print(shell_quote(@cmd), "\n");
     #system(@cmd);
     #system('true');
@@ -317,18 +320,5 @@ for my $entry (@{$plist->{'data'}->[1]->{'Books'}->[1]})
 $logger->info("Processed $processed, added $added");
 
 __END__
-DEBUG - Looking for replacement for /Volumes/Frankenstein/Users/tony/Downloads/b
-ookofpf_ano-nonsenseguidetotheopenbsdfirewall.epub
-DEBUG - Found plausible replacement candidate /Volumes/Frankenstein/Users/tony/D
-ownloads/previouslyfiledaway/bookofpf_ano-nonsenseguidetotheopenbsdfirewall.epub
-DEBUG - (higher precedence) sourcePath /Volumes/Frankenstein/Users/tony/Download
-s/bookofpf_ano-nonsenseguidetotheopenbsdfirewall.epub
-DEBUG - Looking for replacement for /Volumes/Frankenstein/Users/tony/Library/Mob
-ile Documents/iCloud~com~apple~iBooks/Documents/The Book of PF A No-Nonsense Gui
-de to the OpenBSD Firewall.epub
-DEBUG - No plausible replacement found for /Volumes/Frankenstein/Users/tony/Libr
-ary/Mobile Documents/iCloud~com~apple~iBooks/Documents/The Book of PF A No-Nonse
-nse Guide to the OpenBSD Firewall.epub
-INFO - 'calibredb' 'add' '--authors' 'Peter N.M. Hansteen' '--title' 'The Book of PF: A No-Nonsense Guide to the OpenBSD Firewall' '/Volumes/Frankenstein/Users/tony/Downloads/bookofpf_ano-nonsenseguidetotheopenbsdfirewall.epub'
 
 curl http://localhost:8081/interface-data/books-init?library_id=Calibre_Library\&search=author:Elly
