@@ -293,7 +293,6 @@ my $processed = 0;
 my $added = 0;
 for my $entry (@{$plist->{'Books'}->value})
 {
-    $logger->debug($entry->value);
     $processed++;    
     $added += emit(plash($entry->value));
 }
