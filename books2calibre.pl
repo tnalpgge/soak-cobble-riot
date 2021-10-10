@@ -4,15 +4,15 @@ use strict;
 use warnings;
 
 use Data::Dumper;
-use Data::Plist::BinaryReader;
 use File::Basename;
 use File::Find ();
 use File::Glob qw(:bsd_glob);
 use File::Spec;
-use IO::File;
+use IO::Pipe;
 use JSON;
 use Log::Log4perl;
 use LWP::UserAgent;
+use Mac::PropertyList::SAX;
 use String::ShellQuote;
 use URI;
 use URI::Escape;
@@ -83,55 +83,22 @@ sub trim
 
 sub plash
 {
+    my %entry = @_;
     my %plash;
-    while (my ($k, $pair) = each %{$_[0]})
+    $logger->debug("Extracting information from plist entry");
+    $plash{'--title'} = trim($entry{'itemName'});
+    $plash{'--title'} ||= trim($entry{'BKDisplayName'});
+    $plash{'--authors'} = trim($entry{'artistName'});
+    for my $i (qw(sourcePath path))
     {
-	my ($type, $value) = @{$pair};
-	if ($type =~ /date/i)
+	my $candidate = file_or_candidate($entry{$i});
+	if ($candidate)
 	{
-	    #$logger->debug("Skipping date-like field $k ($type)");
-	    next;
+	    $logger->debug($candidate);
+	    $plash{'file'} ||= $candidate;
 	}
-	if ($k eq 'itemName')
-	{
-	    #$logger->debug("$k $value");
-	    $plash{'--title'} = trim($value);
-	}
-	if ($k eq 'BKDisplayName')
-	{
-	    #$logger->debug("provisional $k $value");
-	    $plash{'--title'} ||= $value;
-	}
-	if ($k eq 'sourcePath')
-	{
-	    my $candidate = file_or_candidate($value);
-	    if ($candidate)
-	    {
-		$logger->debug("(higher precedence) $k $candidate");
-		$plash{'file'} = $candidate;		
-	    }
-	}
-	if ($k eq 'path')
-	{
-	    my $candidate = file_or_candidate($value);
-	    if ($candidate)
-	    {
-		$logger->debug("(lower precedence) $k $candidate");
-		$plash{'file'} ||= $candidate;
-	    }
-	}
-	if ($k eq 'artistName')
-	{
-	    #$logger->debug("$k $value");
-	    $plash{'--authors'} = trim($value);
-	}
-	# title 'itemName' || 'BKDisplayName' || basename(sourcePath) || basename(path)
-	# authors 'artistName'
-	# isbn
-	# tags
-	# series (e.g. "The Dresden Files")
-	# series index (e.g. book 3 of N)
     }
+    $logger->debug("Most plausible file ", $plash{'file'});
     if (exists $plash{'--authors'})
     {
 	$logger->debug("Authors: ", $plash{'--authors'});
@@ -287,7 +254,6 @@ sub emit
     return 1;
 }
 
-my $reader = Data::Plist::BinaryReader->new();
 my $homedir = bsd_glob("~", GLOB_TILDE);
 my $plistfile = File::Spec->catfile(
     $homedir,
@@ -303,18 +269,19 @@ my $plistfile = File::Spec->catfile(
     )
     );
 $logger->info("Reading books plist file $plistfile");
-my $fh = IO::File->new($plistfile, 'r');
+my $fh = IO::Pipe->new();
+$fh->reader(qw(plutil -convert xml1 -o - --), $plistfile);
 $logger->debug("deserializing");
-my $plist = $reader->open_fh($fh);
+my $plist = Mac::PropertyList::SAX::parse_plist(join("", $fh->getlines()));
+$fh->close();
 #print YAML::Dump($plist);
 my $processed = 0;
 my $added = 0;
-for my $entry (@{$plist->{'data'}->[1]->{'Books'}->[1]})
+for my $entry (@{$plist->{'Books'}->value})
 {
-    #$logger->debug(Dumper($entry));
-    #$logger->debug(Dumper($entry->[1]));
+    $logger->debug($entry->value);
     $processed++;    
-    $added += emit(plash($entry->[1]));
+    $added += emit(plash($entry->value));
 }
 
 $logger->info("Processed $processed, added $added");
