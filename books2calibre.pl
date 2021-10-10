@@ -87,13 +87,25 @@ sub plash
     my %plash;
     $logger->debug("Extracting information from plist entry");
     $logger->debug(%entry);
-    $plash{'--title'} = trim($entry{'itemName'});
-    $plash{'--title'} ||= trim($entry{'BKDisplayName'});
-    $plash{'--authors'} = trim($entry{'artistName'});
+    for my $i (qw(itemName BKDisplayName))
+    {
+	if ((exists $entry{$i}) && $entry{$i})
+	{
+	    $plash{'--title'} ||= trim($entry{$i}->value);
+	}
+    }
+    if ((exists $entry{'artistName'}) && $entry{'artistName'})
+    {
+	$plash{'--authors'} = trim($entry{'artistName'}->value);	
+    }
+    else
+    {
+	$plash{'--authors'} = "Unknown Author";
+    }
     for my $i (qw(sourcePath path))
     {
 	next unless ((exists $entry{$i}) && $entry{$i});
-	my $candidate = file_or_candidate($entry{$i});
+	my $candidate = file_or_candidate($entry{$i}->value);
 	if ($candidate)
 	{
 	    $logger->debug($candidate);
