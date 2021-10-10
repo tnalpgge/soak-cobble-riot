@@ -86,11 +86,13 @@ sub plash
     my %entry = @_;
     my %plash;
     $logger->debug("Extracting information from plist entry");
+    $logger->debug(%entry);
     $plash{'--title'} = trim($entry{'itemName'});
     $plash{'--title'} ||= trim($entry{'BKDisplayName'});
     $plash{'--authors'} = trim($entry{'artistName'});
     for my $i (qw(sourcePath path))
     {
+	next unless ((exists $entry{$i}) && $entry{$i});
 	my $candidate = file_or_candidate($entry{$i});
 	if ($candidate)
 	{
