@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Data::Dumper;
+use Encode qw(decode);
 use File::Basename;
 use File::Find ();
 use File::Glob qw(:bsd_glob);
@@ -242,7 +243,7 @@ sub emit
     {
 	if (substr($k, 0, 1) eq '-')
 	{
-	    push @cmd, $k, $v;
+	    push @cmd, $k, decode('UTF-8', $v);
 	}
     }
     push @cmd, $plash{'file'};
