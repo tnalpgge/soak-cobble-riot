@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+set -e
 progname=${0##*/}
 progname=${progname%%.*}
 tmpsh=$(mktemp $PWD/${progname}.sh.XXXXXXXX)
