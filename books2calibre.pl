@@ -258,6 +258,8 @@ sub emit
     unless (exists $plash{'file'})
     {
 	$logger->warn("Book without corresponding file");
+	$logger->warn("Authors: ", $plash{'--authors'} || "unknown authors");
+	$logger->warn("Title: ", $plash{'--title'} || "unknown title");
 	return 0;	    
     }
     #if (lc(substr($plash{'file'}, -5)) ne '.epub')
