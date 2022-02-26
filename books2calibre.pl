@@ -138,11 +138,11 @@ sub isdup
     {
 	if ($k eq '--authors')
 	{
-	    $search{'author'} = $v;
+	    $search{'author'} = encode('UTF-8', $v);
 	}
 	if ($k eq '--title')
 	{
-	    $search{'title'} = $v;
+	    $search{'title'} = encode('UTF-8', $v);
 	}
     }
     my @search;
@@ -221,7 +221,7 @@ sub isdup
 sub build_ingest_cmd
 {
     my %plash = @_;
-    my @cmd = qw(calibredb add);
+    my @cmd = qw(calibredb add --automerge ignore);
     while (my ($k, $v) = each %plash)
     {
 	if (substr($k, 0, 1) eq '-')
