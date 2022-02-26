@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Data::Dumper;
-use Encode qw(decode);
+use Encode qw(decode encode);
 use File::Basename;
 use File::Find ();
 use File::Glob qw(:bsd_glob);
@@ -79,7 +79,7 @@ sub trim
     $x =~ s/^\s*//;
     $x =~ s/\s$//;
     $x =~ s/\s+/ /g;
-    return $x;
+    return encode("UTF-8", $x);
 }
 
 sub plash
@@ -97,7 +97,7 @@ sub plash
     }
     if ((exists $entry{'artistName'}) && $entry{'artistName'})
     {
-	$plash{'--authors'} = trim($entry{'artistName'}->value);	
+	$plash{'--authors'} = trim($entry{'artistName'}->value);
     }
     else
     {
@@ -218,10 +218,43 @@ sub isdup
     return 0;
 }
 
-sub emit
+sub build_ingest_cmd
 {
     my %plash = @_;
     my @cmd = qw(calibredb add);
+    while (my ($k, $v) = each %plash)
+    {
+	if (substr($k, 0, 1) eq '-')
+	{
+	    push @cmd, $k, $v;
+	}
+    }
+    push @cmd, $plash{'file'};
+    return @cmd;
+}
+
+sub emit_ingest_script
+{
+    my $plash = shift;
+    my $cmd = shift;
+    if (exists $plash->{'--authors'})
+    {
+	$logger->info("Authors: ", $plash->{'--authors'});
+	print("echo Authors: ", shell_quote($plash->{'--authors'}), "\n");
+    }
+    if (exists $plash->{'--title'})
+    {
+	$logger->info("Title: ", $plash->{'--title'});
+	print("echo Title: ", shell_quote($plash->{'--title'}), "\n");	
+    }
+    $logger->info("Filename: ", $plash->{'file'});
+    print("echo Filename: ", shell_quote($plash->{'file'}), "\n");
+    print(shell_quote(@$cmd), "\n");    
+}
+
+sub emit
+{
+    my %plash = @_;
     unless (exists $plash{'file'})
     {
 	$logger->warn("Book without corresponding file");
@@ -239,27 +272,15 @@ sub emit
 	$logger->debug("Appears to be duplicate");
 	return 0;
     }
-    while (my ($k, $v) = each %plash)
+    eval {
+	my @cmd = build_ingest_cmd(%plash);
+	emit_ingest_script(\%plash, \@cmd);	
+    };
+    if ($@)
     {
-	if (substr($k, 0, 1) eq '-')
-	{
-	    push @cmd, $k, decode('UTF-8', $v);
-	}
+	$logger->error("Could not construct command: $@");
+	die Dumper(\%plash);
     }
-    push @cmd, $plash{'file'};
-    if (exists $plash{'--authors'})
-    {
-	$logger->info("Authors: ", $plash{'--authors'});
-	print("echo Authors: ", shell_quote($plash{'--authors'}), "\n");
-    }
-    if (exists $plash{'--title'})
-    {
-	$logger->info("Title: ", $plash{'--title'});
-	print("echo Title: ", shell_quote($plash{'--title'}), "\n");	
-    }
-    $logger->info("Filename: ", $plash{'file'});
-    print("echo Filename: ", shell_quote($plash{'file'}), "\n");
-    print(shell_quote(@cmd), "\n");
     #system(@cmd);
     #system('true');
     if (($? == -1) || ($? & 127) || ($? >> 8))
